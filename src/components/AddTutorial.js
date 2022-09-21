@@ -1,92 +1,64 @@
 import React, { useState } from "react";
-import { useDispatch } from "react-redux";
-import { createTutorial } from "../slices/tutorials";
+import { useForm } from "react-hook-form";
+import { useCreateTutorialMutation } from "../slices/apiSlice";
 
 const AddTutorial = () => {
-  const initialTutorialState = {
-    id: null,
-    title: "",
-    description: "",
-    published: false
-  };
-  const [tutorial, setTutorial] = useState(initialTutorialState);
-  const [submitted, setSubmitted] = useState(false);
+  const [message, setMessage] = useState("");
+  const {
+    register,
+    formState: { errors },
+    handleSubmit,
+  } = useForm();
 
-  const dispatch = useDispatch();
+  const [createTutorial] = useCreateTutorialMutation();
 
-  const handleInputChange = event => {
-    const { name, value } = event.target;
-    setTutorial({ ...tutorial, [name]: value });
-  };
-
-  const saveTutorial = () => {
-    const { title, description } = tutorial;
-
-    dispatch(createTutorial({ title, description }))
-      .unwrap()
-      .then(data => {
-        console.log(data);
-        setTutorial({
-          id: data.id,
-          title: data.title,
-          description: data.description,
-          published: data.published
-        });
-        setSubmitted(true);
-      })
-      .catch(e => {
-        console.log(e);
-      });
-  };
-
-  const newTutorial = () => {
-    setTutorial(initialTutorialState);
-    setSubmitted(false);
+  const onSubmit = async (data1) => {
+    const { title, description } = data1;
+    try {
+      await createTutorial({ title, description }).unwrap;
+      setMessage("The tutorial was added successfully!");
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   return (
-    <div className="submit-form">
-      {submitted ? (
-        <div>
-          <h4>You submitted successfully!</h4>
-          <button className="btn btn-success" onClick={newTutorial}>
-            Add
-          </button>
+    <React.Fragment>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="form-floating my-3">
+          <input
+            type="text"
+            className="form-control"
+            id="title"
+            placeholder="Enter title"
+            defaultValue=""
+            name="title"
+            {...register("title", { required: true })}
+          />
+          <label htmlFor="title">Title: </label>
+          {errors.title && <div className="text-danger">Title is required</div>}
         </div>
-      ) : (
-        <div>
-          <div className="form-group">
-            <label htmlFor="title">Title</label>
-            <input
-              type="text"
-              className="form-control"
-              id="title"
-              required
-              value={tutorial.title || ''}
-              onChange={handleInputChange}
-              name="title"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="description">Description</label>
-            <input
-              type="text"
-              className="form-control"
-              id="description"
-              required
-              value={tutorial.description || ''}
-              onChange={handleInputChange}
-              name="description"
-            />
-          </div>
-
-          <button onClick={saveTutorial} className="btn btn-success">
-            Submit
-          </button>
+        <div className="form-floating my-3">
+          <input
+            type="text"
+            className="form-control"
+            id="description"
+            placeholder="Enter description"
+            defaultValue=""
+            name="description"
+            {...register("description", { required: true })}
+          />
+          <label htmlFor="description">Description: </label>
+          {errors.description && (
+            <div className="text-danger">Description is required</div>
+          )}
         </div>
-      )}
-    </div>
+        <button type="submit" className="btn btn-success">
+          Submit
+        </button>
+        <p>{message}</p>
+      </form>
+    </React.Fragment>
   );
 };
 

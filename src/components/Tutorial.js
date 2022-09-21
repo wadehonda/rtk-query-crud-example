@@ -1,153 +1,160 @@
-import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { updateTutorial, deleteTutorial } from "../slices/tutorials";
-import TutorialDataService from "../services/TutorialService";
+import React, { useState, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { useParams } from "react-router-dom";
+import {
+  useGetTutorialQuery,
+  useUpdateTutorialMutation,
+  useDeleteTutorialMutation,
+} from "../slices/apiSlice";
+import { useNavigate } from "react-router-dom";
 
 const Tutorial = (props) => {
+  let { id } = useParams();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
+  let navigate = useNavigate();
+
   const initialTutorialState = {
     id: null,
     title: "",
     description: "",
-    published: false
+    published: false,
   };
-  const [currentTutorial, setCurrentTutorial] = useState(initialTutorialState);
+
+  const currentTutorial = useRef(initialTutorialState);
   const [message, setMessage] = useState("");
+  const {
+    data: tutorial,
+    isSuccess,
+    isLoading,
+    isError,
+  } = useGetTutorialQuery(id);
 
-  const dispatch = useDispatch();
+  const [deleteTutorial] = useDeleteTutorialMutation();
+  const [updateTutorial] = useUpdateTutorialMutation();
 
-  const getTutorial = id => {
-    TutorialDataService.get(id)
-      .then(response => {
-        setCurrentTutorial(response.data);
-      })
-      .catch(e => {
-        console.log(e);
-      });
+  const updateStatus = async (status) => {
+    currentTutorial.current = {
+      ...currentTutorial.current,
+      published: status,
+    };
+    try {
+      await updateTutorial({
+        id: currentTutorial.current.id,
+        tutorial: currentTutorial.current,
+      }).unwrap;
+      setMessage("The status was updated successfully!");
+    } catch (e) {
+      console.log(e);
+    }
   };
 
-  useEffect(() => {
-    getTutorial(props.match.params.id);
-  }, [props.match.params.id]);
-
-  const handleInputChange = event => {
-    const { name, value } = event.target;
-    setCurrentTutorial({ ...currentTutorial, [name]: value });
-  };
-
-  const updateStatus = status => {
-    const data = {
-      id: currentTutorial.id,
-      title: currentTutorial.title,
-      description: currentTutorial.description,
-      published: status
+  const updateContent = async (data) => {
+    currentTutorial.current = {
+      ...currentTutorial.current,
+      title: data.title,
+      description: data.description,
     };
 
-    dispatch(updateTutorial({ id: currentTutorial.id, data }))
-      .unwrap()
-      .then(response => {
-        console.log(response);
-        setCurrentTutorial({ ...currentTutorial, published: status });
-        setMessage("The status was updated successfully!");
-      })
-      .catch(e => {
-        console.log(e);
-      });
-  };
-
-  const updateContent = () => {
-    dispatch(updateTutorial({ id: currentTutorial.id, data: currentTutorial }))
-      .unwrap()
-      .then(response => {
-        console.log(response);
-        setMessage("The tutorial was updated successfully!");
-      })
-      .catch(e => {
-        console.log(e);
-      });
+    try {
+      await updateTutorial({
+        id: currentTutorial.current.id,
+        tutorial: currentTutorial.current,
+      }).unwrap;
+      setMessage("The tutorial was updated successfully!");
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   const removeTutorial = () => {
-    dispatch(deleteTutorial({ id: currentTutorial.id }))
-      .unwrap()
-      .then(() => {
-        props.history.push("/tutorials");
-      })
-      .catch(e => {
-        console.log(e);
-      });
+    deleteTutorial(currentTutorial.current.id);
+    navigate("/tutorials");
   };
+
+  if (isSuccess) {
+    currentTutorial.current = tutorial;
+  }
 
   return (
     <div>
-      {currentTutorial ? (
-        <div className="edit-form">
+      {isSuccess ? (
+        <div>
           <h4>Tutorial</h4>
-          <form>
-            <div className="form-group">
+          <form onSubmit={handleSubmit(updateContent)}>
+            <div>
               <label htmlFor="title">Title</label>
               <input
                 type="text"
-                className="form-control"
                 id="title"
                 name="title"
-                value={currentTutorial.title}
-                onChange={handleInputChange}
+                defaultValue={tutorial.title}
+                {...register("title", {
+                  required: "this field is required",
+                  maxLength: 20,
+                })}
               />
+              <small className="text-danger">
+                {errors?.title && errors.title.message}
+              </small>
             </div>
-            <div className="form-group">
+            <div>
               <label htmlFor="description">Description</label>
               <input
                 type="text"
-                className="form-control"
                 id="description"
                 name="description"
-                value={currentTutorial.description}
-                onChange={handleInputChange}
+                defaultValue={tutorial.description}
+                {...register("description", {
+                  required: "this field is required",
+                  maxLength: 200,
+                })}
               />
+              <small className="text-danger">
+                {errors?.description && errors.description.message}
+              </small>
             </div>
 
-            <div className="form-group">
+            <div>
               <label>
                 <strong>Status:</strong>
               </label>
-              {currentTutorial.published ? "Published" : "Pending"}
+              {tutorial.published ? "Published" : "Unpublished"}
             </div>
+
+            <input className="btn btn-info btn-sm me-2" type="submit" />
+            <p>{message}</p>
           </form>
 
-          {currentTutorial.published ? (
+          {tutorial.published ? (
             <button
-              className="badge badge-primary mr-2"
+              className="btn btn-primary btn-sm me-2"
               onClick={() => updateStatus(false)}
             >
               UnPublish
             </button>
           ) : (
             <button
-              className="badge badge-primary mr-2"
+              className="btn btn-info btn-sm me-2"
               onClick={() => updateStatus(true)}
             >
               Publish
             </button>
           )}
 
-          <button className="badge badge-danger mr-2" onClick={removeTutorial}>
+          <button className="btn btn-info btn-sm me-2" onClick={removeTutorial}>
             Delete
           </button>
-
-          <button
-            type="submit"
-            className="badge badge-success"
-            onClick={updateContent}
-          >
-            Update
-          </button>
-          <p>{message}</p>
         </div>
+      ) : isLoading ? (
+        "... loading"
+      ) : isError ? (
+        "error"
       ) : (
-        <div>
-          <br />
-          <p>Please click on a Tutorial...</p>
-        </div>
+        "undefined"
       )}
     </div>
   );

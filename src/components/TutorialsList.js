@@ -1,32 +1,42 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  retrieveTutorials,
-  findTutorialsByTitle,
-  deleteAllTutorials,
-} from "../slices/tutorials";
+import React, { useState, useMemo } from "react";
+import { createSelector } from "@reduxjs/toolkit";
 import { Link } from "react-router-dom";
+import {
+  useGetTutorialsQuery,
+  useDeleteTutorialsMutation,
+} from "../slices/apiSlice";
 
 const TutorialsList = () => {
   const [currentTutorial, setCurrentTutorial] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [searchTitle, setSearchTitle] = useState("");
 
-  const tutorials = useSelector(state => state.tutorials);
-  const dispatch = useDispatch();
+  const selectTutorialsWithTitle = useMemo(() => {
+    const emptyArray = [];
+    // Return a unique selector instance for this page so that
+    // the filtered results are correctly memoized
+    return createSelector(
+      (res) => res.data,
+      (res, title) => title,
+      (data, title) =>
+        data?.filter((tutorial) => tutorial.title.includes(title)) ?? emptyArray
+    );
+  }, []);
 
-  const onChangeSearchTitle = e => {
-    const searchTitle = e.target.value;
-    setSearchTitle(searchTitle);
+  // Use the same tutorials query, but extract only part of its data
+  const { tutorialsWithTitle: tutorials } = useGetTutorialsQuery(undefined, {
+    selectFromResult: (result) => ({
+      ...result,
+      tutorialsWithTitle: selectTutorialsWithTitle(result, searchTitle),
+    }),
+  });
+
+  const [deleteAll] = useDeleteTutorialsMutation();
+
+  const onChangeSearchTitle = (e) => {
+    const stringInTitle = e.target.value;
+    setSearchTitle(stringInTitle);
   };
-
-  const initFetch = useCallback(() => {
-    dispatch(retrieveTutorials());
-  }, [dispatch])
-
-  useEffect(() => {
-    initFetch()
-  }, [initFetch])
 
   const refreshData = () => {
     setCurrentTutorial(null);
@@ -38,23 +48,20 @@ const TutorialsList = () => {
     setCurrentIndex(index);
   };
 
-  const removeAllTutorials = () => {
-    dispatch(deleteAllTutorials())
-      .then(response => {
-        refreshData();
-      })
-      .catch(e => {
-        console.log(e);
-      });
+  const removeAllTutorials = async () => {
+    try {
+      await deleteAll();
+    } catch (err) {
+      console.log("delete all error");
+    }
   };
 
-  const findByTitle = () => {
+  const findByTitle = (searchTitle) => {
     refreshData();
-    dispatch(findTutorialsByTitle({ title: searchTitle }));
   };
 
   return (
-    <div className="list row">
+    <div className="row">
       <div className="col-md-8">
         <div className="input-group mb-3">
           <input
@@ -64,15 +71,13 @@ const TutorialsList = () => {
             value={searchTitle}
             onChange={onChangeSearchTitle}
           />
-          <div className="input-group-append">
-            <button
-              className="btn btn-outline-secondary"
-              type="button"
-              onClick={findByTitle}
-            >
-              Search
-            </button>
-          </div>
+          <button
+            className="btn btn-success"
+            type="button"
+            onClick={findByTitle}
+          >
+            Search
+          </button>
         </div>
       </div>
       <div className="col-md-6">
@@ -120,12 +125,11 @@ const TutorialsList = () => {
               <label>
                 <strong>Status:</strong>
               </label>{" "}
-              {currentTutorial.published ? "Published" : "Pending"}
+              {currentTutorial.published ? "Published" : "Unpublished"}
             </div>
-
             <Link
               to={"/tutorials/" + currentTutorial.id}
-              className="badge badge-warning"
+              className="btn btn-primary"
             >
               Edit
             </Link>
