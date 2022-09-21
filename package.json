@@ -1,5 +1,5 @@
 {
-  "name": "react-hooks-redux-toolkit-example-crud",
+  "name": "redux-toolkit-rtk-crud-example",
   "version": "0.1.0",
   "private": true,
   "proxy": "http://localhost:8080",

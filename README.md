@@ -172,7 +172,7 @@ With RTK Query, we can use the same tutorials query to fetch and display a list 
 ```
 When the searchTitle is an empty string, all tutorials returned; while when the searchTitle is updated with inputs from the user, only those matching tutorials will be returned by the useGetTutorialsQuery hook.  As TutorialsList is a controlled component in term of the search bar, the returned tutorial list is updated dynamically with the input of every chararter in the search bar (as shown in the screenshot). 
 
-![redux-toolkit-crud-hooks-example](redux-toolkit-crud-hooks-example.png)
+![redux-toolkit-crud-hooks-example](rtkq-example.PNG)
 
 This example focues on the use of RTK Query.  Other changes to the original code includes the use of `React Hook Forms` for input data validation (in `AddTutorials.js` and `Tutorial.js`), and the newer versions of `React Router` (v6) and `Boostrap` (v5) for navigation and responsitive user interface layout.
 
